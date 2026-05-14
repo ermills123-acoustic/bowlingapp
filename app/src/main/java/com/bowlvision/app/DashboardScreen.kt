@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun DashboardScreen() {
+fun DashboardScreen(onNavigateToAnalysis: () -> Unit = {}) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -50,7 +50,19 @@ fun DashboardScreen() {
             }
         }
         
-        Spacer(modifier = Modifier.height(24.dp))
+        Button(
+            onClick = onNavigateToAnalysis,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp)
+                .height(56.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935)),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text("Start Live AI Analysis", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
         Text(text = "Personalized Drills", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
         Spacer(modifier = Modifier.height(16.dp))
         

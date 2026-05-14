@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 
 class MainActivity : ComponentActivity() {
@@ -19,7 +19,13 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    DashboardScreen()
+                    var currentScreen by remember { mutableStateOf("dashboard") }
+
+                    if (currentScreen == "dashboard") {
+                        DashboardScreen(onNavigateToAnalysis = { currentScreen = "analysis" })
+                    } else {
+                        AnalysisScreen(onNavigateBack = { currentScreen = "dashboard" })
+                    }
                 }
             }
         }

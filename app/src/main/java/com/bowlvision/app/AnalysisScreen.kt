@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun AnalysisScreen() {
+fun AnalysisScreen(onNavigateBack: () -> Unit = {}) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -65,6 +65,17 @@ fun AnalysisScreen() {
                 .padding(horizontal = 24.dp, vertical = 12.dp)
         ) {
             Text("Great release timing!", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        }
+
+        // Close Button
+        IconButton(
+            onClick = onNavigateBack,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
+                .background(Color(0x88000000), shape = androidx.compose.foundation.shape.CircleShape)
+        ) {
+            Text("X", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
