@@ -41,8 +41,8 @@ fun DashboardScreen(onNavigateToAnalysis: () -> Unit = {}) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(text = "Average Form Score", color = Color.LightGray, fontSize = 16.sp)
                     Text(
-                        text = "92",
-                        color = Color(0xFFE53935), // Energetic Red
+                        text = "--",
+                        color = Color.Gray, // Changed to gray since no score yet
                         fontSize = 56.sp,
                         fontWeight = FontWeight.ExtraBold
                     )
