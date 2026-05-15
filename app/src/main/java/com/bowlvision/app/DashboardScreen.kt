@@ -12,6 +12,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.geometry.Offset
 
 @Composable
 fun DashboardScreen(onNavigateToAnalysis: () -> Unit = {}) {
@@ -50,16 +53,68 @@ fun DashboardScreen(onNavigateToAnalysis: () -> Unit = {}) {
             }
         }
         
-        Button(
-            onClick = onNavigateToAnalysis,
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 16.dp)
-                .height(56.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935)),
-            shape = RoundedCornerShape(12.dp)
+                .height(200.dp)
+                .background(Color(0xFF1E1E1E), RoundedCornerShape(16.dp)),
+            contentAlignment = Alignment.BottomCenter
         ) {
-            Text("Start Live AI Analysis", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val w = size.width
+                val h = size.height
+                
+                // Draw Wood Lane (Perspective)
+                val lanePath = Path().apply {
+                    moveTo(w * 0.35f, h * 0.2f)
+                    lineTo(w * 0.65f, h * 0.2f)
+                    lineTo(w * 0.85f, h * 0.8f)
+                    lineTo(w * 0.15f, h * 0.8f)
+                    close()
+                }
+                drawPath(lanePath, color = Color(0xFFC19A6B))
+                
+                // Draw Gutters
+                val leftGutter = Path().apply {
+                    moveTo(w * 0.3f, h * 0.2f)
+                    lineTo(w * 0.35f, h * 0.2f)
+                    lineTo(w * 0.15f, h * 0.8f)
+                    lineTo(w * 0.05f, h * 0.8f)
+                    close()
+                }
+                drawPath(leftGutter, color = Color(0xFF424242))
+                
+                val rightGutter = Path().apply {
+                    moveTo(w * 0.65f, h * 0.2f)
+                    lineTo(w * 0.7f, h * 0.2f)
+                    lineTo(w * 0.95f, h * 0.8f)
+                    lineTo(w * 0.85f, h * 0.8f)
+                    close()
+                }
+                drawPath(rightGutter, color = Color(0xFF424242))
+                
+                // Draw Pins
+                val pinRadius = 6f
+                val pinY = h * 0.25f
+                drawCircle(color = Color.White, radius = pinRadius, center = Offset(w * 0.5f, pinY))
+                drawCircle(color = Color.White, radius = pinRadius, center = Offset(w * 0.45f, pinY - 8f))
+                drawCircle(color = Color.White, radius = pinRadius, center = Offset(w * 0.55f, pinY - 8f))
+                drawCircle(color = Color.White, radius = pinRadius, center = Offset(w * 0.4f, pinY - 16f))
+                drawCircle(color = Color.White, radius = pinRadius, center = Offset(w * 0.6f, pinY - 16f))
+            }
+            
+            Button(
+                onClick = onNavigateToAnalysis,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Start Live AI Analysis", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            }
         }
         
         Spacer(modifier = Modifier.height(8.dp))
