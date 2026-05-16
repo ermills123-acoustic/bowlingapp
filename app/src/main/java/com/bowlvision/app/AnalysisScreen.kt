@@ -12,6 +12,10 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -49,18 +53,22 @@ fun AnalysisScreen(onNavigateBack: () -> Unit = {}) {
         }
     }
 
+    var isAnalyzing by remember { mutableStateOf(true) }
     var poseResult by remember { mutableStateOf<PoseLandmarkerResult?>(null) }
-    var feedback by remember { mutableStateOf<BowlingFeedback?>(null) }
+    var finalShotResult by remember { mutableStateOf<ShotResult?>(null) }
     
     val analyzer = remember { BowlingAnalyzer() }
     val landmarkerHelper = remember {
         PoseLandmarkerHelper(context, object : PoseLandmarkerHelper.LandmarkerListener {
             override fun onError(error: String) {}
             override fun onResults(resultBundle: PoseLandmarkerHelper.ResultBundle) {
+                if (!isAnalyzing) return
+                
                 poseResult = resultBundle.results
-                val resultFeedback = analyzer.analyzeFrame(resultBundle.results)
-                if (resultFeedback != null) {
-                    feedback = resultFeedback
+                val result = analyzer.analyzeFrame(resultBundle.results)
+                if (result != null) {
+                    finalShotResult = result
+                    isAnalyzing = false
                 }
             }
         })
@@ -74,6 +82,7 @@ fun AnalysisScreen(onNavigateBack: () -> Unit = {}) {
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         if (hasCameraPermission) {
+            // Live Camera View
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
                 factory = { ctx ->
@@ -116,7 +125,7 @@ fun AnalysisScreen(onNavigateBack: () -> Unit = {}) {
                 }
             )
             
-            // Draw Skeleton Overlays dynamically
+            // Draw Skeleton Overlays dynamically (freezes when isAnalyzing becomes false)
             poseResult?.let { result ->
                 if (result.landmarks().isNotEmpty()) {
                     val landmarks = result.landmarks()[0]
@@ -124,12 +133,10 @@ fun AnalysisScreen(onNavigateBack: () -> Unit = {}) {
                         val w = size.width
                         val h = size.height
                         
-                        // Scale coordinates
                         fun mapToScreen(norm: com.google.mediapipe.tasks.components.containers.NormalizedLandmark): Offset {
                             return Offset(norm.x() * w, norm.y() * h)
                         }
                         
-                        // Draw lines between key joints (simplistic)
                         val connections = listOf(
                             Pair(11, 12), Pair(11, 13), Pair(13, 15),
                             Pair(12, 14), Pair(14, 16), Pair(11, 23),
@@ -154,53 +161,119 @@ fun AnalysisScreen(onNavigateBack: () -> Unit = {}) {
                     }
                 }
             }
+
+            if (!isAnalyzing && finalShotResult != null) {
+                // Results Overlay
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xEE121212))
+                ) {
+                    IconButton(
+                        onClick = onNavigateBack,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(16.dp)
+                            .background(Color(0x88FFFFFF), CircleShape)
+                    ) {
+                        Text("X", color = Color.Black, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 24.dp, vertical = 64.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        Text("Analysis Complete", fontSize = 24.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = "${finalShotResult!!.score}",
+                            fontSize = 64.sp,
+                            color = Color(0xFF00E676),
+                            fontWeight = FontWeight.ExtraBold
+                        )
+
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Text("Feedback:", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        finalShotResult!!.feedbackBullets.forEach { bullet ->
+                            Text(
+                                "• $bullet",
+                                color = Color.LightGray,
+                                fontSize = 16.sp,
+                                modifier = Modifier.padding(vertical = 4.dp, horizontal = 8.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(32.dp))
+                        Text("Tutorial: How to Improve", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        // Mock Web Tutorial Image
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(180.dp)
+                                .background(Color(0xFF1E1E1E), RoundedCornerShape(12.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("🎳", fontSize = 48.sp)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("Web Tutorial Images Load Here", color = Color.Gray)
+                            }
+                        }
+                        Text(
+                            "Focus on keeping your arm swing tighter to your torso and ensuring your slide foot plants before the ball begins its final descent.",
+                            color = Color.LightGray,
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(top = 12.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(48.dp))
+                        Button(
+                            onClick = {
+                                finalShotResult = null
+                                analyzer.reset()
+                                isAnalyzing = true
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E88E5)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Begin Next Analysis", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(modifier = Modifier.height(32.dp)) // padding bottom
+                    }
+                }
+            } else {
+                // Live HUD
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(16.dp)
+                ) {
+                    Text("LIVE ANALYSIS", color = Color.Red, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Recording your shot...", color = Color.White, fontSize = 14.sp)
+                }
+
+                // Close Button in Live Mode
+                IconButton(
+                    onClick = onNavigateBack,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(16.dp)
+                        .background(Color(0x88000000), CircleShape)
+                ) {
+                    Text("X", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                }
+            }
         } else {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Camera permission required", color = Color.White)
             }
-        }
-
-        // Overlay HUD
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(16.dp)
-        ) {
-            Text("LIVE ANALYSIS", color = Color.Red, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(8.dp))
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0x88000000)),
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Form Score", color = Color.LightGray, fontSize = 12.sp)
-                    Text(feedback?.score?.toString() ?: "--", color = Color.Green, fontSize = 36.sp, fontWeight = FontWeight.ExtraBold)
-                }
-            }
-        }
-
-        // Voice Feedback 
-        feedback?.feedbackMessage?.let { msg ->
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 32.dp)
-                    .background(Color(0x881E1E1E), shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp))
-                    .padding(horizontal = 24.dp, vertical = 12.dp)
-            ) {
-                Text(msg, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            }
-        }
-
-        // Close Button
-        IconButton(
-            onClick = onNavigateBack,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(16.dp)
-                .background(Color(0x88000000), shape = androidx.compose.foundation.shape.CircleShape)
-        ) {
-            Text("X", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         }
     }
 }

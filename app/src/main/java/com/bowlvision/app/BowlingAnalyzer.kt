@@ -1,63 +1,60 @@
 package com.bowlvision.app
 
-import com.google.mediapipe.tasks.components.containers.NormalizedLandmark
 import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerResult
 
-data class BowlingFeedback(
+data class ShotResult(
     val score: Int,
-    val feedbackMessage: String,
-    val isError: Boolean
+    val feedbackBullets: List<String>
 )
 
 class BowlingAnalyzer {
-    // A simple state machine for bowling form
-    // States: START, APPROACH, SLIDE, RELEASE, FOLLOW_THROUGH
     private var currentState = "START"
-    private var lastSlideX = 0f
+    private val accumulatedFeedback = mutableSetOf<String>()
     
-    fun analyzeFrame(result: PoseLandmarkerResult): BowlingFeedback? {
+    fun reset() {
+        currentState = "START"
+        accumulatedFeedback.clear()
+    }
+    
+    fun analyzeFrame(result: PoseLandmarkerResult): ShotResult? {
         if (result.landmarks().isEmpty()) return null
         
         val landmarks = result.landmarks()[0]
         val rightWrist = landmarks[16]
         val rightElbow = landmarks[14]
         val rightShoulder = landmarks[12]
-        val leftAnkle = landmarks[27] // Assuming right-handed bowler, slide foot is left
+        val leftAnkle = landmarks[27] 
+        val rightHip = landmarks[24]
 
-        // Basic heuristic analysis (simplified for MVP)
-        // 1. Arm Swing Plane Check (Shoulder, Elbow, Wrist should be vertically aligned)
+        // 1. Arm Swing Plane Check
         val horizontalDeviation = Math.abs(rightWrist.x() - rightShoulder.x())
         if (horizontalDeviation > 0.15f) {
-            return BowlingFeedback(
-                score = 80,
-                feedbackMessage = "Keep your arm swing closer to your body.",
-                isError = true
-            )
+            accumulatedFeedback.add("Arm swing deviated horizontally. Keep it closer to your body.")
         }
 
-        // 2. Release timing (Wrist drops below waist)
-        val rightHip = landmarks[24]
+        // 2. Release timing
         if (rightWrist.y() > rightHip.y() && currentState != "RELEASE") {
             currentState = "RELEASE"
-            // Check slide foot position relative to release
             if (leftAnkle.y() < rightWrist.y() - 0.1f) {
-                return BowlingFeedback(
-                    score = 75,
-                    feedbackMessage = "Late slide detected! Start your slide earlier.",
-                    isError = true
-                )
+                accumulatedFeedback.add("Late slide detected. Start your slide earlier.")
+            } else {
+                accumulatedFeedback.add("Great release timing!")
             }
-            return BowlingFeedback(
-                score = 95,
-                feedbackMessage = "Great release timing!",
-                isError = false
-            )
         }
         
-        return BowlingFeedback(
-            score = 100,
-            feedbackMessage = "Good form, continue approach.",
-            isError = false
-        )
+        // 3. Follow through & Completion
+        if (currentState == "RELEASE" && rightWrist.y() < rightShoulder.y()) {
+            currentState = "FOLLOW_THROUGH"
+            accumulatedFeedback.add("Good follow through height.")
+            
+            // Calculate final score
+            var score = 100
+            if (accumulatedFeedback.any { it.contains("deviated") }) score -= 15
+            if (accumulatedFeedback.any { it.contains("Late slide") }) score -= 10
+            
+            return ShotResult(score, accumulatedFeedback.toList())
+        }
+        
+        return null // Shot not finished yet
     }
 }
